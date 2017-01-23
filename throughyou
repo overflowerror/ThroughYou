@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# usage: throughyou [PROFILE]
+
+basepath=~/.throughyou
+pensievePath=./Pensieve/pensieve
+defaultProfile="main"
+addrKey="addr"
+
+profile=$defaultProfile
+
+opts=$(getopt -o "" -- $@)
+if test $? != 0; then
+	exit 1
+fi
+eval set -- "$opts"
+
+while true; do
+	case "$1" in
+		--) shift; break;
+	esac
+done
+
+if test "$1" != ""; then
+	profile=$1
+fi
+
+file=$basepath$profile
+localstat=""
+addr=""
+
+if test ! -f $file; then
+	echo "Profile is emtpy."
+	echo -n "Type in the remote address: "
+	read addr
+	echo 
+else
+	echo "Found profile $profile."
+	echo -n "Loading profile ..."
+	localstat=$(cat $file)
+	addr=$(echo "$localstat" | grep "$addrKey:" | awk '{ print $2 }')
+	localstat=$(echo "$localstat" | grep -v "$addrKey:")
+	echo "  Done."
+fi
+
+diaryFile="/dev/shm/$$.throughyou.$profile"
+echo -n "Loading diary ... "
+wget -qO $diaryFile $addr 
+if test $? != 0; then
+	rm $diaryFile 2> /dev/null
+	echo
+	echo "Appearently there was a problem while conntecting to remote host."
+	exit 1
+fi
+
+echo "   Done."
+echo 
+echo -n "Password: "
+read -s password
+echo
+
+remotestat=$(echo $password | ./diary.sh -q stat "$diaryFile")
+if test $? != 0; then
+	echo "There was an error while decrypting. Wrong key?"
+	exit 1
+fi
+
+if test "$localstat" = ""; then
+	echo -n "Do you want to take a look at the diary? [y/n] "
+	read yn
+	if test "$yn" = "yes" -o "$yn" = "y"; then
+		echo $password | pensievePath -q -p read "$diaryFile"
+	fi
+
+	echo -e "$addrKey: $addr\n" > $file
+	echo "$remotestat" >> $file
+	exit 0
+fi
+
+lsize=$(echo "$localstat" | grep "Decrypted size:" | awk '{ print $3}')
+lnren=$(echo "$localstat" | grep "Entries:" | awk '{ print $2 }')
+llast=$(echo "$localstat" | grep "Last entry:" | awk '{ print $3}')
+rsize=$(echo "$remotestat" | grep "Decrypted size:" | awk '{ print $3}')
+rlast=$(echo "$remotestat" | grep "Last entry:" | awk '{ print $3}')
+rnren=$(echo "$localstat" | grep "Entries:" | awk '{ print $2 }')
+
+echo
+echo "Last seen state:"
+echo "  $lnren entries ($lsize bytes)"
+echo "  last entry: $llast"
+echo "Remote state:"
+echo "  $rnren entries ($rsize bytes)"
+echo "  last entry $rlast"
+echo
+entries=$(($rnren - $lnren))
+echo "There are $entries new entries."
+echo
+echo -n "Do you want to take a look? [y/n] "
+read yn
+echo
+if test "$yn" != "yes" -a "$yn" != "y"; then
+	echo "Okay. Bye."
+	echo "$addrKey: $addr" > $file
+	echo "$remotestat" >> $file
+	rm $diaryFile
+	exit 0
+fi
+
+echo -n "Start at last seen entry? [y/n] "
+read yn
+opt="-p";
+if test "$yn" = "yes" -o "$yn" = "y"; then
+	opt="-j $llast"
+fi
+
+echo $password | $pensievePath -q $opt read $diaryFile
+
+echo "$addrKey: $addr" > $file
+echo "$remotestat" >> $file
+rm $diaryFile

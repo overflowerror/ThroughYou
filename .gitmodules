@@ -1,0 +1,3 @@
+[submodule "Pensieve"]
+	path = Pensieve
+	url = http://github.com/overflowerror/Pensieve
