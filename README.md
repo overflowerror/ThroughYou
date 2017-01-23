@@ -1,5 +1,5 @@
 # ThroughYou
-Script for viewing remote [Pensieve]{https://github.com/overflowerror/Pensieve} diaries.
+Script for viewing remote [Pensieve](https://github.com/overflowerror/Pensieve) diaries.
 
 ## Setup
 
