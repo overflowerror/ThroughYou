@@ -59,7 +59,7 @@ echo -n "Password: "
 read -s password
 echo
 
-remotestat=$(echo $password | ./diary.sh -q stat "$diaryFile")
+remotestat=$(echo $password | $pensievePath -q stat "$diaryFile")
 if test $? != 0; then
 	echo "There was an error while decrypting. Wrong key?"
 	exit 1
@@ -69,7 +69,7 @@ if test "$localstat" = ""; then
 	echo -n "Do you want to take a look at the diary? [y/n] "
 	read yn
 	if test "$yn" = "yes" -o "$yn" = "y"; then
-		echo $password | pensievePath -q -p read "$diaryFile"
+		echo $password | $pensievePath -q -p read "$diaryFile"
 	fi
 
 	echo -e "$addrKey: $addr\n" > $file
@@ -82,7 +82,7 @@ lnren=$(echo "$localstat" | grep "Entries:" | awk '{ print $2 }')
 llast=$(echo "$localstat" | grep "Last entry:" | awk '{ print $3}')
 rsize=$(echo "$remotestat" | grep "Decrypted size:" | awk '{ print $3}')
 rlast=$(echo "$remotestat" | grep "Last entry:" | awk '{ print $3}')
-rnren=$(echo "$localstat" | grep "Entries:" | awk '{ print $2 }')
+rnren=$(echo "$remotestat" | grep "Entries:" | awk '{ print $2 }')
 
 echo
 echo "Last seen state:"
